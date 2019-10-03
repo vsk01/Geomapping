@@ -14,14 +14,57 @@ eartquakeColormap = L.tileLayer(
   }
 )
 
-// Create the map object with zoom 4
+var satellitemap = L.tileLayer(
+  'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
+  {
+    attribution:
+      "Map data &copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors, <a href='https://creativecommons.org/licenses/by-sa/2.0/'>CC-BY-SA</a>, Imagery © <a href='https://www.mapbox.com/'>Mapbox</a>",
+    maxZoom: 18,
+    id: 'mapbox.streets-satellite',
+    accessToken: apiKey
+  }
+)
+
+var outdoors = L.tileLayer(
+  'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
+  {
+    attribution:
+      "Map data &copy; <a href='https://www.openstreetmap.org/'>OpenStreetMap</a> contributors, <a href='https://creativecommons.org/licenses/by-sa/2.0/'>CC-BY-SA</a>, Imagery © <a href='https://www.mapbox.com/'>Mapbox</a>",
+    maxZoom: 18,
+    id: 'mapbox.outdoors',
+    accessToken: apiKey
+  }
+)
+
+// Create the map object with zoom 4and add the satellite and outdoor layers
 var map_object = L.map('mapid', {
   center: [35.7, -94.5],
-  zoom: 4
+  zoom: 4,
+  layers: [eartquakeColormap, satellitemap, outdoors]
 })
 
 // add map object to earthquake map
 eartquakeColormap.addTo(map_object)
+
+// Create two layers each for earthquakes and tectonicplates data
+var tectonicplates = new L.LayerGroup()
+var earthquakes = new L.LayerGroup()
+
+// Define an object that contains all of the different map choices. Only one from these will be visible any given time.
+var baseMaps = {
+  Satellite: satellitemap,
+  Grayscale: eartquakeColormap,
+  Outdoors: outdoors
+}
+
+// Create overlays to be visible in any combination.
+var overlays = {
+  'Tectonic Plates': tectonicplates,
+  Earthquakes: earthquakes
+}
+
+// User will have control of choice based on this addition
+L.control.layers(baseMaps, overlays).addTo(map_object)
 
 // Get geoJSON data with AJAX call
 d3.json(
@@ -80,9 +123,12 @@ d3.json(
             quakePoint.properties.place
         )
       }
-    }).addTo(map_object)
+    }).addTo(earthquakes) // add data to earthquake layer.
 
-    // position the legend for magnitude scale
+    // add this layer to the main map
+    earthquakes.addTo(map_object)
+
+    // position the legend for magnitude and scale
     var legend = L.control({
       position: 'bottomright'
     })
@@ -115,5 +161,19 @@ d3.json(
 
     // add the created legend to the map
     legend.addTo(map_object)
+
+    // Make an AJAX call to get the Tectonic Plate geoJSON data from github.
+    d3.json(
+      'https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json',
+      function (platedata) {
+        L.geoJson(platedata, {
+          color: 'orange',
+          weight: 2
+        }).addTo(tectonicplates)
+
+        // Add the tectonicplates layer to the map to reflect above geojson data
+        tectonicplates.addTo(map_object)
+      }
+    )
   }
 )
